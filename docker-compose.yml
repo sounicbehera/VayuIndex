@@ -1,0 +1,46 @@
+services:
+  # 1. TimescaleDB (Time-Series PostgreSQL)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: vayu_timescale
+    environment:
+      POSTGRES_USER: vayu_admin
+      POSTGRES_PASSWORD: vayu_secure_password
+      POSTGRES_DB: vayu_cpi
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./sql/01_init_timescale.sql:/docker-entrypoint-initdb.d/01_init.sql
+    restart: unless-stopped
+
+  # 2. Redis (Streaming Buffer)
+  redis:
+    image: redis:7-alpine
+    container_name: vayu_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+  # 3. MinIO (S3-Compatible Object Store)
+  minio:
+    image: minio/minio:latest
+    container_name: vayu_minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+volumes:
+  timescaledb_data:
+  redis_data:
+  minio_data:

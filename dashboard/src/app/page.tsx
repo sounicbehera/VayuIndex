@@ -1,0 +1,253 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { 
+  Plane, 
+  TrendingUp, 
+  ShieldCheck, 
+  Activity, 
+  Layers, 
+  Database,
+  ArrowUpRight,
+  RefreshCw
+} from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  Legend,
+  AreaChart,
+  Area
+} from 'recharts';
+import { 
+  fetchLatestIndex, 
+  fetchElasticity, 
+  fetchRoutes, 
+  IndexRecord, 
+  ElasticityMetric, 
+  RouteBreakdown 
+} from '@/lib/api';
+
+export default function Dashboard() {
+  const [latestIndex, setLatestIndex] = useState<IndexRecord | null>(null);
+  const [elasticityData, setElasticityData] = useState<ElasticityMetric[]>([]);
+  const [routesData, setRoutesData] = useState<RouteBreakdown[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [indexRes, elastRes, routeRes] = await Promise.all([
+        fetchLatestIndex().catch(() => null),
+        fetchElasticity().catch(() => []),
+        fetchRoutes().catch(() => []),
+      ]);
+      setLatestIndex(indexRes);
+      setElasticityData(elastRes);
+      setRoutesData(routeRes);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
+      {/* Top Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-6 mb-8 gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400">
+              <Plane className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                vayuIndex <span className="text-xs bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-mono">APIx Engine v1.0</span>
+              </h1>
+              <p className="text-xs text-slate-400">High-Frequency Econometric Airfare Price Index for Retail CPI Augmentation (MoSPI / RBI)</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-md font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            STREAM INGESTION ACTIVE
+          </div>
+          <button 
+            onClick={loadDashboardData} 
+            className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md border border-slate-700 transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
+      </header>
+
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
+            <span>NATIONAL APIx VALUE</span>
+            <TrendingUp className="w-4 h-4 text-sky-400" />
+          </div>
+          <div className="text-3xl font-extrabold text-white font-mono">
+            {latestIndex ? Number(latestIndex.index_value).toFixed(2) : '--'}
+          </div>
+          <div className="text-xs text-slate-400 mt-2 flex items-center gap-1 font-mono">
+            Base: {latestIndex?.base_period || '2026-08-01'} = 100.0
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
+            <span>AGGREGATION FORMULA</span>
+            <Layers className="w-4 h-4 text-indigo-400" />
+          </div>
+          <div className="text-lg font-bold text-white">
+            Jevons & Laspeyres
+          </div>
+          <div className="text-xs text-slate-400 mt-2 font-mono">
+            DGCA Seat-Volume Weighted
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
+            <span>PERSISTENCE HYPERTABLE</span>
+            <Database className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-lg font-bold text-white">
+            TimescaleDB (pg16)
+          </div>
+          <div className="text-xs text-emerald-400 mt-2 font-mono flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5" /> Proof-of-Quote Audit Enabled
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
+            <span>ACTIVE CORRIDORS</span>
+            <Activity className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="text-3xl font-extrabold text-white font-mono">
+            {routesData.length}
+          </div>
+          <div className="text-xs text-slate-400 mt-2 font-mono">
+            Key Domestic Metro Sectors
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Lead-Time Elasticity Curve */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-semibold text-white">Lead-Time Elasticity Curve (ΔP / ΔT)</h2>
+              <p className="text-xs text-slate-400">Deconstructing Base Fare surge pricing vs statutory airport taxes</p>
+            </div>
+            <span className="text-xs font-mono text-sky-400 bg-sky-500/10 px-2 py-1 rounded border border-sky-500/20">
+              Booking Windows
+            </span>
+          </div>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={elasticityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorBase" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="advance_window" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} tickFormatter={(val) => `₹${val}`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
+                  formatter={(val: number) => [`₹${val}`, '']}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Area type="monotone" dataKey="avg_total_fare" name="Avg Total Fare (₹)" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorTotal)" />
+                <Area type="monotone" dataKey="avg_base_fare" name="Base Fare (₹)" stroke="#6366f1" fillOpacity={1} fill="url(#colorBase)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* DGCA Sector Passenger Volume Weights */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-semibold text-white">Domestic Corridor Pricing vs DGCA Weights</h2>
+              <p className="text-xs text-slate-400">Sector-specific average fare and institutional index weighting</p>
+            </div>
+          </div>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={routesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="route_id" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} tickFormatter={(val) => `₹${val}`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
+                  formatter={(val: number) => [`₹${val}`, '']}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="avg_total_fare" name="Avg Fare (₹)" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="min_fare" name="Min Fare (₹)" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Corridor Breakdown Table */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 overflow-x-auto">
+        <h2 className="text-base font-semibold text-white mb-1">Domestic Corridor Matrix & Econometric Attributes</h2>
+        <p className="text-xs text-slate-400 mb-4">Real-time quotes breakdown across high-density metro routes</p>
+        <table className="w-full text-left text-xs font-mono">
+          <thead className="bg-slate-950 text-slate-400 uppercase border-b border-slate-800">
+            <tr>
+              <th className="px-4 py-3">Route ID</th>
+              <th className="px-4 py-3">Origin / Destination</th>
+              <th className="px-4 py-3">DGCA Weight ($w_i$)</th>
+              <th className="px-4 py-3">Sample Quotes</th>
+              <th className="px-4 py-3">Min Fare</th>
+              <th className="px-4 py-3">Max Fare</th>
+              <th className="px-4 py-3">Avg Market Fare</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800">
+            {routesData.map((route) => (
+              <tr key={route.route_id} className="hover:bg-slate-800/40">
+                <td className="px-4 py-3 font-bold text-sky-400">{route.route_id}</td>
+                <td className="px-4 py-3 text-slate-300">{route.origin_city} → {route.destination_city}</td>
+                <td className="px-4 py-3 text-amber-400">{(route.dgca_passenger_weight * 100).toFixed(1)}%</td>
+                <td className="px-4 py-3 text-slate-300">{route.quote_count}</td>
+                <td className="px-4 py-3 text-emerald-400">₹{route.min_fare}</td>
+                <td className="px-4 py-3 text-rose-400">₹{route.max_fare}</td>
+                <td className="px-4 py-3 font-bold text-white">₹{route.avg_total_fare}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  );
+}
