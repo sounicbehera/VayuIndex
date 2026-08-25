@@ -53,3 +53,14 @@ export const fetchRoutes = async (): Promise<RouteBreakdown[]> => {
   const { data } = await apiClient.get('/analytics/routes');
   return data;
 };
+
+export interface BenchmarkPoint {
+  index_date: string;
+  apix_value: number;
+  mospi_proxy_value: number;
+}
+
+export const fetchBenchmark = async (): Promise<BenchmarkPoint[]> => {
+  const { data } = await apiClient.get('/analytics/benchmark');
+  return data;
+};
