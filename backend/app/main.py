@@ -2,18 +2,17 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from typing import List, Optional
 
 app = FastAPI(
-    title="vayuIndex API (APIx)",
-    description="Real-Time Indian Airfare Price Index Engine for Augmenting Retail CPI (MoSPI/RBI)",
+    title="vayuIndex API",
+    description="High-Frequency Econometric Airfare Price Index API",
     version="1.0.0"
 )
 
-# Enable CORS for Next.js / Frontend dashboard access
+# Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -101,28 +100,35 @@ def get_lead_time_elasticity():
 
 @app.get("/api/v1/analytics/routes", tags=["Analytics"])
 def get_route_breakdown():
-    """Returns sector-wise pricing metrics and DGCA passenger volume weights."""
+    """Returns aggregated corridor pricing and DGCA weights for all tracked routes."""
     conn = get_db()
     cursor = conn.cursor()
-    query = """
-    SELECT 
-        q.route_id,
-        COALESCE(r.origin_city, SPLIT_PART(q.route_id, '-', 1)) AS origin_city,
-        COALESCE(r.destination_city, SPLIT_PART(q.route_id, '-', 2)) AS destination_city,
-        COALESCE(r.dgca_passenger_weight, 0.10) AS dgca_passenger_weight,
-        ROUND(AVG(q.total_fare), 2) AS avg_total_fare,
-        ROUND(MIN(q.total_fare), 2) AS min_fare,
-        ROUND(MAX(q.total_fare), 2) AS max_fare,
-        COUNT(q.id) AS quote_count
-    FROM raw_flight_quotes q
-    LEFT JOIN route_metadata r ON q.route_id = r.route_id
-    GROUP BY q.route_id, r.origin_city, r.destination_city, r.dgca_passenger_weight
-    ORDER BY dgca_passenger_weight DESC;
-    """
-    cursor.execute(query)
+    cursor.execute("""
+        SELECT 
+            r.route_id,
+            SPLIT_PART(r.route_id, '-', 1) AS origin_city,
+            SPLIT_PART(r.route_id, '-', 2) AS destination_city,
+            CASE r.route_id
+                WHEN 'DEL-BOM' THEN 0.220
+                WHEN 'DEL-BLR' THEN 0.145
+                WHEN 'BOM-BLR' THEN 0.100
+                WHEN 'DEL-CCU' THEN 0.090
+                WHEN 'DEL-MAA' THEN 0.085
+                WHEN 'BOM-GOI' THEN 0.060
+                ELSE 0.050
+            END AS dgca_passenger_weight,
+            COUNT(*) AS quote_count,
+            ROUND(MIN(r.total_fare)::numeric, 2) AS min_fare,
+            ROUND(MAX(r.total_fare)::numeric, 2) AS max_fare,
+            ROUND(AVG(r.total_fare)::numeric, 2) AS avg_total_fare
+        FROM raw_flight_quotes r
+        GROUP BY r.route_id
+        ORDER BY dgca_passenger_weight DESC;
+    """)
     results = cursor.fetchall()
     conn.close()
     return results
+
 
 @app.get("/api/v1/analytics/benchmark", tags=["Analytics"])
 def get_benchmark_comparison():
