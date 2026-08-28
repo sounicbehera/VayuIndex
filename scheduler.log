@@ -1,0 +1,68 @@
+2026-08-26 09:47:26,628 [INFO] Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-08-26 09:47:26,629 [INFO] Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-08-26 09:47:26,629 [INFO] ============================================================
+2026-08-26 09:47:26,629 [INFO]  vayuIndex Automated Engine Scheduler Online 
+2026-08-26 09:47:26,629 [INFO]  - Fare Crawl Interval: Every 6 Hours (with instant boot run)
+2026-08-26 09:47:26,629 [INFO]  - Daily APIx Computation: 23:55 UTC
+2026-08-26 09:47:26,630 [INFO] ============================================================
+2026-08-26 09:47:26,630 [INFO] Added job "Crawl Domestic Routes" to job store "default"
+2026-08-26 09:47:26,631 [INFO] Added job "Compute & Seal Daily APIx" to job store "default"
+2026-08-26 09:47:26,631 [INFO] Scheduler started
+2026-08-26 09:47:26,632 [INFO] Running job "Crawl Domestic Routes (trigger: interval[6:00:00], next run at: 2026-08-26 15:47:26 IST)" (scheduled at 2026-08-26 04:17:26.628116+00:00)
+2026-08-26 09:47:26,632 [INFO] [SCHEDULER] Starting scheduled flight fare ingestion cycle...
+2026-08-26 09:47:39,519 [INFO] [SCHEDULER] Fare ingestion cycle completed successfully.
+2026-08-26 09:47:39,520 [INFO] Job "Crawl Domestic Routes (trigger: interval[6:00:00], next run at: 2026-08-26 15:47:26 IST)" executed successfully
+2026-08-26 09:52:45,301 [INFO] Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-08-26 09:52:45,301 [INFO] Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-08-26 09:52:45,301 [INFO] ============================================================
+2026-08-26 09:52:45,301 [INFO]  vayuIndex Automated Engine Scheduler Online 
+2026-08-26 09:52:45,301 [INFO]  - Fare Crawl Interval: Every 6 Hours (with instant boot run)
+2026-08-26 09:52:45,301 [INFO]  - Daily APIx Computation: 23:55 UTC
+2026-08-26 09:52:45,301 [INFO] ============================================================
+2026-08-26 09:52:45,301 [INFO] Added job "Crawl Domestic Routes" to job store "default"
+2026-08-26 09:52:45,302 [INFO] Added job "Compute & Seal Daily APIx" to job store "default"
+2026-08-26 09:52:45,302 [INFO] Scheduler started
+2026-08-26 09:52:45,303 [INFO] Running job "Crawl Domestic Routes (trigger: interval[6:00:00], next run at: 2026-08-26 15:52:45 IST)" (scheduled at 2026-08-26 04:22:45.300992+00:00)
+2026-08-26 09:52:45,303 [INFO] [SCHEDULER] Starting scheduled flight fare ingestion cycle...
+2026-08-26 09:52:48,906 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:48,949 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:48,951 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:48,952 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,015 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,016 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,020 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,022 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,023 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,024 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,030 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,032 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,193 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,200 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,201 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,203 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,204 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,208 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,209 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,210 [INFO] HTTP Request: POST https://flightservice.easemytrip.com/EmtFltAPI/V1/FlightSearch "HTTP/1.1 404 Not Found"
+2026-08-26 09:52:49,220 [ERROR] [SCHEDULER] Fare ingestion error: 'charmap' codec can't encode character '\u2713' in position 1: character maps to <undefined>
+Traceback (most recent call last):
+  File "D:\SIH\scraping\tasks.py", line 25, in job_crawl_quotes
+    asyncio.run(run_live_pipeline())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\souni\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Users\souni\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\souni\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "D:\SIH\scraping\live_crawler.py", line 150, in run_live_pipeline
+    print(f"[✓] Captured {len(flat_quotes)} real-time flight quotes.")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\souni\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 1: character maps to <undefined>
+2026-08-26 09:52:49,224 [INFO] Job "Crawl Domestic Routes (trigger: interval[6:00:00], next run at: 2026-08-26 15:52:45 IST)" executed successfully

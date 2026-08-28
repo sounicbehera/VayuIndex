@@ -9,7 +9,8 @@ import {
   Layers, 
   Database,
   RefreshCw,
-  Clock
+  Clock,
+  Download
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -42,6 +43,7 @@ export default function Dashboard() {
   const [routesData, setRoutesData] = useState<RouteBreakdown[]>([]);
   const [benchmarkData, setBenchmarkData] = useState<BenchmarkPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const loadDashboardData = async () => {
     try {
@@ -65,7 +67,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
+    setMounted(true);
   }, []);
+
+  if (!mounted) return null;
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
@@ -90,6 +95,13 @@ export default function Dashboard() {
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             STREAM INGESTION ACTIVE
           </div>
+          <a
+            href="http://127.0.0.1:8000/api/v1/export/mospi-report.csv"
+            download="vayuIndex_MoSPI_CPI_SubClass58_Report.csv"
+            className="flex items-center gap-1 text-xs bg-sky-600 hover:bg-sky-500 text-white font-medium px-3 py-1.5 rounded-md transition border border-sky-400/30"
+          >
+            <Download className="w-3.5 h-3.5" /> Export MoSPI CSV
+          </a>
           <button 
             onClick={loadDashboardData} 
             className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md border border-slate-700 transition"
@@ -165,7 +177,7 @@ export default function Dashboard() {
             Backtest Validated
           </span>
         </div>
-        <div className="h-80 w-full">
+        <div className="h-80 w-full min-h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={benchmarkData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -192,7 +204,7 @@ export default function Dashboard() {
               <p className="text-xs text-slate-400">Deconstructing Base Fare surge pricing vs statutory airport taxes</p>
             </div>
           </div>
-          <div className="h-72 w-full">
+          <div className="h-72 w-full min-h-[288px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={elasticityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
@@ -228,7 +240,7 @@ export default function Dashboard() {
               <p className="text-xs text-slate-400">Sector-specific average fare and institutional index weighting</p>
             </div>
           </div>
-          <div className="h-72 w-full">
+          <div className="h-72 w-full min-h-[288px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={routesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -268,11 +280,11 @@ export default function Dashboard() {
               <tr key={route.route_id} className="hover:bg-slate-800/40">
                 <td className="px-4 py-3 font-bold text-sky-400">{route.route_id}</td>
                 <td className="px-4 py-3 text-slate-300">{route.origin_city} → {route.destination_city}</td>
-                <td className="px-4 py-3 text-amber-400">{(route.dgca_passenger_weight * 100).toFixed(1)}%</td>
+                <td className="px-4 py-3 text-amber-400">{(Number(route.dgca_passenger_weight) * 100).toFixed(1)}%</td>
                 <td className="px-4 py-3 text-slate-300">{route.quote_count}</td>
-                <td className="px-4 py-3 text-emerald-400">₹{route.min_fare}</td>
-                <td className="px-4 py-3 text-rose-400">₹{route.max_fare}</td>
-                <td className="px-4 py-3 font-bold text-white">₹{route.avg_total_fare}</td>
+                <td className="px-4 py-3 text-emerald-400">₹{Number(route.min_fare).toFixed(2)}</td>
+                <td className="px-4 py-3 text-rose-400">₹{Number(route.max_fare).toFixed(2)}</td>
+                <td className="px-4 py-3 font-bold text-white">₹{Number(route.avg_total_fare).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
