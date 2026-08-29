@@ -3,14 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Plane, 
-  TrendingUp, 
   ShieldCheck, 
-  Activity, 
   Layers, 
-  Database,
   RefreshCw,
-  Clock,
-  Download
+  Download,
+  SlidersHorizontal,
+  Globe
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -36,6 +34,8 @@ import {
   RouteBreakdown,
   BenchmarkPoint
 } from '@/lib/api';
+import SourceConfigModal from '@/components/SourceConfigModal';
+import ProofOfDocumentModal from '@/components/ProofOfDocumentModal';
 
 export default function Dashboard() {
   const [latestIndex, setLatestIndex] = useState<IndexRecord | null>(null);
@@ -44,6 +44,18 @@ export default function Dashboard() {
   const [benchmarkData, setBenchmarkData] = useState<BenchmarkPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
+  const [sourceModalTab, setSourceModalTab] = useState<'corridors' | 'sources'>('corridors');
+  const [isProofModalOpen, setIsProofModalOpen] = useState(false);
+
+  const openSourceModal = (tab: 'corridors' | 'sources') => {
+    setSourceModalTab(tab);
+    setIsSourceModalOpen(true);
+  };
+
+  const openProofModal = () => {
+    setIsProofModalOpen(true);
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -74,8 +86,18 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
-      {/* Top Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-6 mb-8 gap-4">
+      <SourceConfigModal 
+        isOpen={isSourceModalOpen} 
+        onClose={() => setIsSourceModalOpen(false)} 
+        initialTab={sourceModalTab} 
+      />
+      <ProofOfDocumentModal 
+        isOpen={isProofModalOpen}
+        onClose={() => setIsProofModalOpen(false)}
+      />
+
+      {/* Streamlined Action Header */}
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-slate-800 pb-6 mb-8 gap-6">
         <div>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400">
@@ -85,97 +107,59 @@ export default function Dashboard() {
               <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
                 vayuIndex <span className="text-xs bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-mono">APIx Engine v1.0</span>
               </h1>
-              <p className="text-xs text-slate-400">High-Frequency Econometric Airfare Price Index for Retail CPI Augmentation (MoSPI / RBI)</p>
+              <p className="text-xs text-slate-400 mt-1">High-Frequency Econometric Airfare Price Index for Retail CPI Augmentation (MoSPI / RBI)</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-md font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            STREAM INGESTION ACTIVE
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={openProofModal}
+            className="flex items-center gap-2 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-2 rounded-md font-medium transition"
+          >
+            <ShieldCheck className="w-4 h-4" /> Proof of Document
+          </button>
+          
+          <button 
+            onClick={() => openSourceModal('corridors')}
+            className="flex items-center gap-2 text-xs bg-[#0b1329] hover:bg-slate-800 text-cyan-400 border border-cyan-900/40 px-3 py-2 rounded-md font-medium transition"
+          >
+            <SlidersHorizontal className="w-4 h-4" /> Configure City-Pairs
+          </button>
+          
+          <button 
+            onClick={() => openSourceModal('sources')}
+            className="flex items-center gap-2 text-xs bg-[#0b1329] hover:bg-slate-800 text-cyan-400 border border-cyan-900/40 px-3 py-2 rounded-md font-medium transition"
+          >
+            <Globe className="w-4 h-4" /> Sources (5 Airlines / 6 OTAs)
+          </button>
+
+          <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block"></div>
+          
           <a
             href="http://127.0.0.1:8000/api/v1/export/mospi-report.csv"
             download="vayuIndex_MoSPI_CPI_SubClass58_Report.csv"
-            className="flex items-center gap-1 text-xs bg-sky-600 hover:bg-sky-500 text-white font-medium px-3 py-1.5 rounded-md transition border border-sky-400/30"
+            className="flex items-center gap-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white font-medium px-3 py-2 rounded-md transition border border-sky-400/30"
           >
-            <Download className="w-3.5 h-3.5" /> Export MoSPI CSV
+            <Download className="w-4 h-4" /> Export MoSPI CSV
           </a>
+          
           <button 
             onClick={loadDashboardData} 
-            className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md border border-slate-700 transition"
+            className="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-md border border-slate-700 transition"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
       </header>
-
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
-            <span>NATIONAL APIx VALUE</span>
-            <TrendingUp className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="text-3xl font-extrabold text-white font-mono">
-            {latestIndex ? Number(latestIndex.index_value).toFixed(2) : '--'}
-          </div>
-          <div className="text-xs text-slate-400 mt-2 flex items-center gap-1 font-mono">
-            Base: {latestIndex?.base_period || '2026-08-01'} = 100.0
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
-            <span>AGGREGATION FORMULA</span>
-            <Layers className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-lg font-bold text-white">
-            Jevons & Laspeyres
-          </div>
-          <div className="text-xs text-slate-400 mt-2 font-mono">
-            DGCA Seat-Volume Weighted
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
-            <span>PERSISTENCE HYPERTABLE</span>
-            <Database className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-lg font-bold text-white">
-            TimescaleDB (pg16)
-          </div>
-          <div className="text-xs text-emerald-400 mt-2 font-mono flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5" /> Proof-of-Quote Audit Enabled
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2 font-medium">
-            <span>LEAD-TIME ADVANTAGE</span>
-            <Clock className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-3xl font-extrabold text-white font-mono">
-            +14 Days
-          </div>
-          <div className="text-xs text-slate-400 mt-2 font-mono">
-            Early Signal vs Monthly MoSPI CPI
-          </div>
-        </div>
-      </div>
 
       {/* 30-Day Historical Time Series Benchmark Chart */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-white">30-Day Time-Series: vayuIndex (APIx) vs Official MoSPI CPI Sub-Class 58</h2>
-            <p className="text-xs text-slate-400">Comparing real-time high-frequency price discovery with official lagged monthly publications ($r = 0.6881$)</p>
+            <p className="text-xs text-slate-400">Comparing real-time high-frequency price discovery with official lagged monthly publications (r = 0.6881)</p>
           </div>
-          <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
-            Backtest Validated
-          </span>
         </div>
         <div className="h-80 w-full min-h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -222,7 +206,7 @@ export default function Dashboard() {
                 <YAxis stroke="#64748b" fontSize={12} tickFormatter={(val) => `₹${val}`} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
-                  formatter={(val: number) => [`₹${val}`, '']}
+                  formatter={(val: any) => [`₹${val}`, '']}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
                 <Area type="monotone" dataKey="avg_total_fare" name="Avg Total Fare (₹)" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorTotal)" />
@@ -248,7 +232,7 @@ export default function Dashboard() {
                 <YAxis stroke="#64748b" fontSize={12} tickFormatter={(val) => `₹${val}`} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
-                  formatter={(val: number) => [`₹${val}`, '']}
+                  formatter={(val: any) => [`₹${val}`, '']}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
                 <Bar dataKey="avg_total_fare" name="Avg Fare (₹)" fill="#0284c7" radius={[4, 4, 0, 0]} />

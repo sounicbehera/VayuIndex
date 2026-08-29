@@ -11,7 +11,7 @@ load_dotenv()
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "127.0.0.1:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadminpassword")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "vayu-cpi-audit")
 
 def get_minio_client() -> Minio:

@@ -266,25 +266,54 @@ def get_backtest_report():
     return report
 
 @app.get("/api/v1/quotes/latest", tags=["Quotes"])
-def get_latest_quotes(limit: int = 80):
-    """
-    Fetches the most recent live flight quotes from the TimescaleDB hypertable.
-    """
+def get_latest_quotes(limit: int = 100):
+    """Fetches the latest live captured flight quotes with cryptographic proofs."""
     try:
         conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT * FROM raw_flight_quotes
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 
+                id,
+                recorded_at,
+                crawl_id,
+                carrier,
+                flight_number,
+                corridor_code,
+                advance_window,
+                departure_date,
+                departure_time,
+                base_fare,
+                fuel_surcharge,
+                statutory_taxes AS tax_fees,
+                total_fare,
+                proof_hash AS sha256_proof,
+                proof_object_key
+            FROM raw_flight_quotes
             ORDER BY recorded_at DESC
             LIMIT %s;
         """, (limit,))
-        rows = cursor.fetchall()
+        records = cur.fetchall()
+        cur.close()
         conn.close()
-        
-        return {
-            "status": "success",
-            "count": len(rows),
-            "data": rows
-        }
+        return {"status": "success", "count": len(records), "data": records}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/index/daily", tags=["Econometric Index"])
+def get_daily_indices():
+    """Fetches the computed vayuIndex (APIx) time-series values."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT index_date, base_period, index_value, recorded_at
+            FROM apix_daily_indices
+            ORDER BY index_date DESC
+            LIMIT 30;
+        """)
+        records = cur.fetchall()
+        cur.close()
+        conn.close()
+        return {"status": "success", "data": records}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
