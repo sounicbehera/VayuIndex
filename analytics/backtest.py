@@ -1,3 +1,4 @@
+# written by sounic behera
 import math
 import random
 import uuid
@@ -5,8 +6,9 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_batch
+import os
 
-DB_URL = "postgresql://vayu_admin:vayu_secure_password@127.0.0.1:5433/vayu_cpi"
+DB_URL = os.getenv("DB_URL", "postgresql://vayu_admin:vayu_secure_password@127.0.0.1:5433/vayu_cpi")
 
 ROUTES = [
     {"route_id": "DEL-BOM", "base_mean": 8200, "weight": 0.22},

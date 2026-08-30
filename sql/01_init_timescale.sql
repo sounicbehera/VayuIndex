@@ -22,29 +22,33 @@ VALUES
     ('BOM-BLR', 'BOM', 'BLR', 'Mumbai', 'Bengaluru', 0.1000),
     ('DEL-CCU', 'DEL', 'CCU', 'New Delhi', 'Kolkata', 0.0900),
     ('BLR-HYD', 'BLR', 'HYD', 'Bengaluru', 'Hyderabad', 0.0500),
-    ('MAA-DEL', 'MAA', 'DEL', 'Chennai', 'New Delhi', 0.0400)
+    ('MAA-DEL', 'MAA', 'DEL', 'Chennai', 'New Delhi', 0.0400),
+    ('DEL-MAA', 'DEL', 'MAA', 'New Delhi', 'Chennai', 0.0850)
 ON CONFLICT (route_id) DO NOTHING;
 
 -- 3. Normalized Raw Quotes Hypertable
 CREATE TABLE IF NOT EXISTS raw_flight_quotes (
     id BIGSERIAL,
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    crawl_id UUID NOT NULL,
-    source_platform VARCHAR(50) NOT NULL,
-    carrier VARCHAR(50) NOT NULL,
-    flight_number VARCHAR(20) NOT NULL,
+    crawl_id VARCHAR(50) NOT NULL,
+    source_platform VARCHAR(50),
+    carrier VARCHAR(50),
+    flight_number VARCHAR(20),
+    corridor_code VARCHAR(20),
     route_id VARCHAR(10) REFERENCES route_metadata(route_id),
-    advance_window VARCHAR(5) NOT NULL,
-    departure_date DATE NOT NULL,
+    advance_window VARCHAR(10),
+    departure_date DATE,
     departure_time TIME,
-    base_fare NUMERIC(10, 2) NOT NULL,
+    base_fare NUMERIC(10, 2),
     fuel_surcharge NUMERIC(10, 2) DEFAULT 0.0,
     statutory_taxes NUMERIC(10, 2) DEFAULT 0.0,
     convenience_fee NUMERIC(10, 2) DEFAULT 0.0,
-    total_fare NUMERIC(10, 2) NOT NULL,
+    total_fare NUMERIC(10, 2),
     is_sold_out BOOLEAN DEFAULT FALSE,
     is_outlier BOOLEAN DEFAULT FALSE,
-    audit_s3_key VARCHAR(255)
+    proof_hash VARCHAR(256),
+    proof_object_key VARCHAR(500),
+    UNIQUE (route_id, flight_number, recorded_at)
 );
 
 -- Convert to Hypertable partitioned across time

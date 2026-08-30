@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 interface FlightQuote {
   id: number;
   recorded_at: string;
+  source_platform: string;
   carrier: string;
   flight_number: string;
   corridor_code: string;
@@ -101,9 +102,16 @@ export default function ProofOfDocumentModal({ isOpen, onClose }: ProofModalProp
                 className="flex items-center justify-between rounded-lg border border-zinc-800/80 bg-zinc-900/40 p-3 hover:border-zinc-700"
               >
                 <div className="flex items-center gap-3">
-                  <span className="rounded bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/20">
-                    {q.carrier}
-                  </span>
+                  <div className="flex flex-col gap-1.5 items-center">
+                    <span className="rounded bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/20">
+                      {q.carrier}
+                    </span>
+                    {q.source_platform && (
+                       <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-bold text-sky-400 border border-sky-500/20 uppercase tracking-widest text-center">
+                         {q.source_platform.replace('_', ' ')}
+                       </span>
+                    )}
+                  </div>
                   <div>
                     <div className="text-sm font-semibold text-zinc-100">
                       {q.flight_number} • {q.corridor_code}

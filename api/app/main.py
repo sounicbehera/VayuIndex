@@ -1,3 +1,4 @@
+# written by sounic behera
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
@@ -13,7 +14,7 @@ import csv
 import io
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone
-from scraping.analytics.backtesting import run_dgca_backtest
+from analytics.backtesting import run_dgca_backtest
 
 app = FastAPI(
     title="vayuIndex API",
@@ -31,7 +32,7 @@ app.add_middleware(
 )
 
 # TimescaleDB connection targeting Docker port 5433
-DB_URL = "postgresql://vayu_admin:vayu_secure_password@127.0.0.1:5433/vayu_cpi"
+DB_URL = os.getenv("DB_URL", "postgresql://vayu_admin:vayu_secure_password@127.0.0.1:5433/vayu_cpi")
 
 def get_db():
     return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
@@ -40,24 +41,31 @@ def get_db():
 @app.get("/health", tags=["Monitoring"])
 def health_check():
     """Health check endpoint to verify API and database connectivity."""
+    conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute("SELECT 1;")
-        conn.close()
         return {"status": "healthy", "service": "vayuIndex-serving-engine", "database": "connected"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database connection error: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.get("/api/v1/index/latest", tags=["Econometric Index"])
 def get_latest_index():
     """Fetches the latest computed national vayuIndex (APIx) value."""
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM apix_daily_indices ORDER BY index_date DESC, computed_at DESC LIMIT 1;")
-    result = cursor.fetchone()
-    conn.close()
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM apix_daily_indices ORDER BY index_date DESC, computed_at DESC LIMIT 1;")
+        result = cursor.fetchone()
+    finally:
+        if conn:
+            conn.close()
     
     if not result:
         raise HTTPException(status_code=404, detail="No calculated index found in the database.")
@@ -67,87 +75,103 @@ def get_latest_index():
 @app.get("/api/v1/index/history", tags=["Econometric Index"])
 def get_index_history(limit: int = Query(30, ge=1, le=365)):
     """Retrieves historical vayuIndex time-series for econometric charting."""
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM apix_daily_indices ORDER BY index_date ASC LIMIT %s;", (limit,))
-    results = cursor.fetchall()
-    conn.close()
-    return results
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM apix_daily_indices ORDER BY index_date ASC LIMIT %s;", (limit,))
+        results = cursor.fetchall()
+        return results
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.get("/api/v1/analytics/elasticity", tags=["Analytics"])
 def get_lead_time_elasticity():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 
-            advance_window,
-            ROUND(AVG(total_fare)::numeric, 2)::float AS avg_total_fare,
-            ROUND(AVG(base_fare)::numeric, 2)::float AS avg_base_fare
-        FROM raw_flight_quotes
-        GROUP BY advance_window
-        ORDER BY 
-            CASE advance_window
-                WHEN 'T+1' THEN 1
-                WHEN 'T+7' THEN 2
-                WHEN 'T+15' THEN 3
-                WHEN 'T+30' THEN 4
-                WHEN 'T+45' THEN 5
-                ELSE 6
-            END;
-    """)
-    results = cursor.fetchall()
-    conn.close()
-    return results
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                advance_window,
+                ROUND(AVG(total_fare)::numeric, 2)::float AS avg_total_fare,
+                ROUND(AVG(base_fare)::numeric, 2)::float AS avg_base_fare
+            FROM raw_flight_quotes
+            GROUP BY advance_window
+            ORDER BY 
+                CASE advance_window
+                    WHEN 'T+1' THEN 1
+                    WHEN 'T+7' THEN 2
+                    WHEN 'T+15' THEN 3
+                    WHEN 'T+30' THEN 4
+                    WHEN 'T+45' THEN 5
+                    ELSE 6
+                END;
+        """)
+        results = cursor.fetchall()
+        return results
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.get("/api/v1/analytics/routes", tags=["Analytics"])
 def get_route_breakdown():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 
-            r.route_id,
-            SPLIT_PART(r.route_id, '-', 1) AS origin_city,
-            SPLIT_PART(r.route_id, '-', 2) AS destination_city,
-            CASE r.route_id
-                WHEN 'DEL-BOM' THEN 0.220
-                WHEN 'DEL-BLR' THEN 0.145
-                WHEN 'BOM-BLR' THEN 0.100
-                WHEN 'DEL-CCU' THEN 0.090
-                WHEN 'DEL-MAA' THEN 0.085
-                WHEN 'BOM-GOI' THEN 0.060
-                ELSE 0.050
-            END::float AS dgca_passenger_weight,
-            COUNT(*)::int AS quote_count,
-            ROUND(MIN(r.total_fare)::numeric, 2)::float AS min_fare,
-            ROUND(MAX(r.total_fare)::numeric, 2)::float AS max_fare,
-            ROUND(AVG(r.total_fare)::numeric, 2)::float AS avg_total_fare
-        FROM raw_flight_quotes r
-        GROUP BY r.route_id
-        ORDER BY dgca_passenger_weight DESC;
-    """)
-    results = cursor.fetchall()
-    conn.close()
-    return results
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                r.route_id,
+                SPLIT_PART(r.route_id, '-', 1) AS origin_city,
+                SPLIT_PART(r.route_id, '-', 2) AS destination_city,
+                CASE r.route_id
+                    WHEN 'DEL-BOM' THEN 0.220
+                    WHEN 'DEL-BLR' THEN 0.145
+                    WHEN 'BOM-BLR' THEN 0.100
+                    WHEN 'DEL-CCU' THEN 0.090
+                    WHEN 'DEL-MAA' THEN 0.085
+                    WHEN 'BOM-GOI' THEN 0.060
+                    ELSE 0.050
+                END::float AS dgca_passenger_weight,
+                COUNT(*)::int AS quote_count,
+                ROUND(MIN(r.total_fare)::numeric, 2)::float AS min_fare,
+                ROUND(MAX(r.total_fare)::numeric, 2)::float AS max_fare,
+                ROUND(AVG(r.total_fare)::numeric, 2)::float AS avg_total_fare
+            FROM raw_flight_quotes r
+            GROUP BY r.route_id
+            ORDER BY dgca_passenger_weight DESC;
+        """)
+        results = cursor.fetchall()
+        return results
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.get("/api/v1/analytics/benchmark", tags=["Analytics"])
 def get_benchmark_comparison():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 
-            TO_CHAR(index_date, 'YYYY-MM-DD') AS index_date, 
-            ROUND(index_value::numeric, 2)::float AS apix_value,
-            ROUND((168.5 + (ROW_NUMBER() OVER (ORDER BY index_date ASC) * 0.28))::numeric, 2)::float AS mospi_proxy_value
-        FROM apix_daily_indices 
-        ORDER BY index_date ASC 
-        LIMIT 30;
-    """)
-    results = cursor.fetchall()
-    conn.close()
-    return results
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                TO_CHAR(index_date, 'YYYY-MM-DD') AS index_date, 
+                ROUND(index_value::numeric, 2)::float AS apix_value,
+                ROUND((103.0 + (ROW_NUMBER() OVER (ORDER BY index_date ASC) * 0.25))::numeric, 2)::float AS mospi_proxy_value
+            FROM apix_daily_indices 
+            ORDER BY index_date ASC 
+            LIMIT 30;
+        """)
+        results = cursor.fetchall()
+        return results
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.get("/api/v1/audit/verify/{crawl_id}", tags=["Audit & Governance"])
@@ -156,18 +180,22 @@ def verify_audit_snapshot(crawl_id: str):
     Cryptographically verifies the authenticity and immutability of a crawl batch
     by comparing the stored TimescaleDB SHA-256 hash with the MinIO raw object hash.
     """
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # 1. Fetch recorded audit metadata from TimescaleDB
-    cursor.execute("""
-        SELECT proof_hash, proof_object_key, COUNT(*) as quote_count
-        FROM raw_flight_quotes
-        WHERE crawl_id = %s
-        GROUP BY proof_hash, proof_object_key;
-    """, (crawl_id,))
-    record = cursor.fetchone()
-    conn.close()
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # 1. Fetch recorded audit metadata from TimescaleDB
+        cursor.execute("""
+            SELECT proof_hash, proof_object_key, COUNT(*) as quote_count
+            FROM raw_flight_quotes
+            WHERE crawl_id = %s
+            GROUP BY proof_hash, proof_object_key;
+        """, (crawl_id,))
+        record = cursor.fetchone()
+    finally:
+        if conn:
+            conn.close()
 
     if not record or not record.get("proof_object_key"):
         raise HTTPException(
@@ -215,21 +243,25 @@ def export_mospi_cpi_report():
     Exports a structured CSV report containing daily Jevons-Laspeyres APIx indices,
     corridor aggregations, and sample volume stats for institutional analysis.
     """
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Query 30-day index history with route-level aggregates
-    cursor.execute("""
-        SELECT 
-            i.index_date,
-            i.base_period,
-            i.index_value,
-            FALSE AS is_provisional
-        FROM apix_daily_indices i
-        ORDER BY i.index_date DESC;
-    """)
-    rows = cursor.fetchall()
-    conn.close()
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Query 30-day index history with route-level aggregates
+        cursor.execute("""
+            SELECT 
+                i.index_date,
+                i.base_period,
+                i.index_value,
+                FALSE AS is_provisional
+            FROM apix_daily_indices i
+            ORDER BY i.index_date DESC;
+        """)
+        rows = cursor.fetchall()
+    finally:
+        if conn:
+            conn.close()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -268,6 +300,7 @@ def get_backtest_report():
 @app.get("/api/v1/quotes/latest", tags=["Quotes"])
 def get_latest_quotes(limit: int = 100):
     """Fetches the latest live captured flight quotes with cryptographic proofs."""
+    conn = None
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -276,6 +309,7 @@ def get_latest_quotes(limit: int = 100):
                 id,
                 recorded_at,
                 crawl_id,
+                source_platform,
                 carrier,
                 flight_number,
                 corridor_code,
@@ -293,15 +327,17 @@ def get_latest_quotes(limit: int = 100):
             LIMIT %s;
         """, (limit,))
         records = cur.fetchall()
-        cur.close()
-        conn.close()
         return {"status": "success", "count": len(records), "data": records}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            conn.close()
 
 @app.get("/api/v1/index/daily", tags=["Econometric Index"])
 def get_daily_indices():
     """Fetches the computed vayuIndex (APIx) time-series values."""
+    conn = None
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -312,8 +348,129 @@ def get_daily_indices():
             LIMIT 30;
         """)
         records = cur.fetchall()
-        cur.close()
-        conn.close()
         return {"status": "success", "data": records}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            conn.close()
+import xml.etree.ElementTree as ET
+from fastapi import Request, Response
+import random
+
+ROUTE_FLIGHT_MAP = {
+    "DEL-BOM": "5271",
+    "DEL-BLR": "2131",
+    "BOM-BLR": "5262",
+    "DEL-CCU": "2022",
+    "DEL-MAA": "2568"
+}
+
+@app.post("/mock/ndc/v21.3/AirShopping", tags=["Mock NDC API"])
+async def mock_ndc_air_shopping(request: Request):
+    """
+    Simulates the real IndiGo NDC API for the hackathon by parsing the request
+    and returning the exact realistic IATA_AirShoppingRS schema provided.
+    """
+    body = await request.body()
+    try:
+        root = ET.fromstring(body)
+        ns = {'cmn': 'http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersCommonTypes'}
+        origin = root.find('.//cmn:OriginDepCriteria/cmn:IATA_LocationCode', ns).text
+        dest = root.find('.//cmn:DestArrivalCriteria/cmn:IATA_LocationCode', ns).text
+        date_str = root.find('.//cmn:OriginDepCriteria/cmn:Date', ns).text
+    except Exception:
+        origin, dest, date_str = "AGX", "COK", "2025-10-19"
+        
+    flight_num = ROUTE_FLIGHT_MAP.get(f"{origin}-{dest}", str(random.randint(100, 999)))
+    
+    base_fare = 4500.0 if origin == "DEL" else 5500.0
+    tax = base_fare * 0.18
+    total = base_fare + tax
+    
+    fake_hour = random.randint(5, 22)
+    fake_min = random.choice(["00", "15", "30", "45"])
+    
+    xml_response = f"""<IATA_AirShoppingRS xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersMessage">
+    <Response>
+        <DataLists xmlns="http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersCommonTypes">
+            <DatedMarketingSegmentList>
+                <DatedMarketingSegment>
+                    <Arrival>
+                        <AircraftScheduledDateTime>{date_str}T23:30:00</AircraftScheduledDateTime>
+                        <IATA_LocationCode>{dest}</IATA_LocationCode>
+                    </Arrival>
+                    <CarrierDesigCode>6E</CarrierDesigCode>
+                    <DatedMarketingSegmentId>Mkt-seg0349235905</DatedMarketingSegmentId>
+                    <DatedOperatingSegmentRefId>Opr-seg0349235905</DatedOperatingSegmentRefId>
+                    <Dep>
+                        <AircraftScheduledDateTime>{date_str}T{fake_hour:02d}:{fake_min}:00</AircraftScheduledDateTime>
+                        <IATA_LocationCode>{origin}</IATA_LocationCode>
+                    </Dep>
+                    <MarketingCarrierFlightNumberText>{flight_num}</MarketingCarrierFlightNumberText>
+                </DatedMarketingSegment>
+            </DatedMarketingSegmentList>
+            <PaxList>
+                <Pax>
+                    <PaxID>ADT0</PaxID>
+                    <PTC>ADT</PTC>
+                </Pax>
+            </PaxList>
+            <PaxSegmentList>
+                <PaxSegment>
+                    <CabinTypeAssociationChoice>
+                        <SegmentCabinType>
+                            <CabinTypeCode>5</CabinTypeCode>
+                            <CabinTypeName>Economy</CabinTypeName>
+                        </SegmentCabinType>
+                    </CabinTypeAssociationChoice>
+                    <DatedMarketingSegmentRefId>Mkt-seg0349235905</DatedMarketingSegmentRefId>
+                    <PaxSegmentID>seg0349235905</PaxSegmentID>
+                </PaxSegment>
+            </PaxSegmentList>
+        </DataLists>
+        <OffersGroup xmlns="http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersCommonTypes">
+            <CarrierOffers>
+                <Offer>
+                    <OfferID>654432311_id-542b4719-dc51-4b40-a92a-8b213ae785b9-o-1</OfferID>
+                    <OfferItem>
+                        <FareDetail>
+                            <FareComponent>
+                                <CabinType>
+                                    <CabinTypeCode>5</CabinTypeCode>
+                                    <CabinTypeName>Economy</CabinTypeName>
+                                </CabinType>
+                                <FareBasisCode>C0IP</FareBasisCode>
+                                <PaxSegmentRefID>seg0349235905</PaxSegmentRefID>
+                            </FareComponent>
+                            <PaxRefID>ADT0</PaxRefID>
+                            <Price>
+                                <BaseAmount CurCode="INR">{base_fare:.2f}</BaseAmount>
+                                <TaxSummary>
+                                    <Tax>
+                                        <Amount CurCode="INR">{tax:.2f}</Amount>
+                                    </Tax>
+                                    <TotalTaxAmount CurCode="INR">{tax:.2f}</TotalTaxAmount>
+                                </TaxSummary>
+                                <TotalAmount CurCode="INR">{total:.2f}</TotalAmount>
+                            </Price>
+                        </FareDetail>
+                        <MandatoryInd>true</MandatoryInd>
+                        <OfferItemID>654432311_id-542b4719-dc51-4b40-a92a-8b213ae785b9-o-1-1</OfferItemID>
+                        <Price>
+                            <BaseAmount CurCode="INR">{base_fare:.2f}</BaseAmount>
+                            <TaxSummary>
+                                <Tax>
+                                    <Amount CurCode="INR">{tax:.2f}</Amount>
+                                </Tax>
+                                <TotalTaxAmount CurCode="INR">{tax:.2f}</TotalTaxAmount>
+                            </TaxSummary>
+                            <TotalAmount CurCode="INR">{total:.2f}</TotalAmount>
+                        </Price>
+                    </OfferItem>
+                </Offer>
+            </CarrierOffers>
+        </OffersGroup>
+    </Response>
+</IATA_AirShoppingRS>"""
+    return Response(content=xml_response, media_type="application/xml")

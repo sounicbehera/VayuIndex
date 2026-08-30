@@ -1,9 +1,11 @@
+# written by sounic behera
 import psycopg2
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta, timezone
+import os
 
-DB_URL = "postgresql://vayu_admin:vayu_secure_password@127.0.0.1:5433/vayu_cpi"
+DB_URL = os.getenv("DB_URL", "postgresql://vayu_admin:vayu_secure_password@127.0.0.1:5433/vayu_cpi")
 
 # Official DGCA Monthly Published Sector Fares (Benchmark Dataset)
 DGCA_MONTHLY_BENCHMARKS = {

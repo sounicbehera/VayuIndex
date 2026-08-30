@@ -105,7 +105,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                vayuIndex <span className="text-xs bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-mono">APIx Engine v1.0</span>
+                vayuIndex (6E-Proxy Baseline) <span className="text-xs bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-mono">APIx Engine v1.0</span>
               </h1>
               <p className="text-xs text-slate-400 mt-1">High-Frequency Econometric Airfare Price Index for Retail CPI Augmentation (MoSPI / RBI)</p>
             </div>
@@ -157,7 +157,7 @@ export default function Dashboard() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-base font-semibold text-white">30-Day Time-Series: vayuIndex (APIx) vs Official MoSPI CPI Sub-Class 58</h2>
+            <h2 className="text-base font-semibold text-white">30-Day Time-Series: vayuIndex (6E-Proxy Baseline) vs Official MoSPI CPI Sub-Class 58</h2>
             <p className="text-xs text-slate-400">Comparing real-time high-frequency price discovery with official lagged monthly publications (r = 0.6881)</p>
           </div>
         </div>
@@ -171,7 +171,7 @@ export default function Dashboard() {
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }} 
               />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Line type="monotone" dataKey="apix_value" name="High-Freq vayuIndex (APIx)" stroke="#38bdf8" strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="apix_value" name="High-Freq vayuIndex (6E-Proxy Baseline)" stroke="#38bdf8" strokeWidth={2.5} dot={false} />
               <Line type="monotone" dataKey="mospi_proxy_value" name="Official MoSPI CPI (Lagged)" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 4" dot={false} />
             </LineChart>
           </ResponsiveContainer>

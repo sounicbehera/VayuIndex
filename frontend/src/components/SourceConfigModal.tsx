@@ -63,6 +63,21 @@ export default function SourceConfigModal({ isOpen, onClose, initialTab = 'corri
 }
 
 function CorridorsTab() {
+  const [routes, setRoutes] = useState([
+    { id: 'DEL-BOM', weight: '22.0%' },
+    { id: 'DEL-BLR', weight: '14.5%' },
+  ]);
+
+  const removeRoute = (id: string) => {
+    setRoutes(routes.filter(r => r.id !== id));
+  };
+
+  const addRoute = () => {
+    if (!routes.find(r => r.id === 'BOM-BLR')) {
+      setRoutes([...routes, { id: 'BOM-BLR', weight: '10.0%' }]);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -72,14 +87,7 @@ function CorridorsTab() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
-          { id: 'DEL-BOM', weight: '22.0%' },
-          { id: 'DEL-BLR', weight: '14.5%' },
-          { id: 'BOM-BLR', weight: '10.0%' },
-          { id: 'DEL-CCU', weight: '9.0%' },
-          { id: 'DEL-MAA', weight: '8.5%' },
-          { id: 'BLR-HYD', weight: '8.0%' },
-        ].map(route => (
+        {routes.map(route => (
           <div key={route.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg">
             <div className="flex items-center gap-3">
               <input type="checkbox" defaultChecked className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900" />
@@ -87,13 +95,13 @@ function CorridorsTab() {
             </div>
             <div className="flex items-center gap-4">
               <span className="text-cyan-400 font-mono text-sm">{route.weight}</span>
-              <button className="text-slate-500 hover:text-rose-400 transition"><Trash2 className="w-4 h-4" /></button>
+              <button onClick={() => removeRoute(route.id)} className="text-slate-500 hover:text-rose-400 transition"><Trash2 className="w-4 h-4" /></button>
             </div>
           </div>
         ))}
       </div>
       <div className="pt-4 border-t border-slate-800">
-        <button className="flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300 font-medium transition">
+        <button onClick={addRoute} className="flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300 font-medium transition">
           <Plus className="w-4 h-4" /> Add New Sector Pair
         </button>
       </div>
@@ -111,10 +119,6 @@ function SourcesTab() {
         <div className="grid gap-3">
           {[
             { name: 'IndiGo (6E)', type: 'LCC', share: '62.4%' },
-            { name: 'Air India (AI)', type: 'FSC', share: '14.2%' },
-            { name: 'Air India Express (IX)', type: 'LCC', share: '6.8%' },
-            { name: 'Akasa Air (QP)', type: 'LCC', share: '4.7%' },
-            { name: 'SpiceJet (SG)', type: 'LCC', share: '3.9%' },
           ].map(airline => (
             <div key={airline.name} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg">
               <div>
@@ -134,7 +138,7 @@ function SourcesTab() {
           <Globe className="w-5 h-5 text-indigo-400" /> Online Travel Aggregators (6 OTAs)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {['MakeMyTrip', 'EaseMyTrip', 'Yatra', 'Cleartrip', 'Ixigo', 'Goibibo'].map(ota => (
+          {['MakeMyTrip'].map(ota => (
             <div key={ota} className="flex flex-col gap-2 p-3 bg-slate-900 border border-slate-800 rounded-lg">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-white">{ota}</span>

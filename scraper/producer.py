@@ -1,14 +1,17 @@
 # written by sounic behera
-import time
+import os
+import concurrent.futures
 from datetime import datetime, timedelta, timezone
-from scraper.worker import scrape_flight_corridor
+from scraper.aggregator_client import fetch_aggregator_quotes
+from storage.orchestrator import StorageOrchestrator
 
 ROUTES = [
     {"src": "DEL", "dest": "BOM"},
     {"src": "DEL", "dest": "BLR"},
     {"src": "BOM", "dest": "BLR"},
     {"src": "DEL", "dest": "CCU"},
-    {"src": "DEL", "dest": "MAA"},
+    {"src": "BLR", "dest": "HYD"},
+    {"src": "MAA", "dest": "DEL"},
 ]
 
 ADVANCE_DAYS = {
@@ -18,32 +21,44 @@ ADVANCE_DAYS = {
     "T+30": 30
 }
 
-PROVIDERS = ["indigo", "airindia", "mmt", "emt"]
+def process_route_window(route, lead_tag, days_out, today):
+    target_date = (today + timedelta(days=days_out)).strftime("%Y-%m-%d")
+    src = route["src"]
+    dest = route["dest"]
+    
+    # 1. Fetch from aggregator mock
+    quotes = fetch_aggregator_quotes(src, dest, target_date, lead_tag)
+    
+    # 2. Synchronous insert to TimescaleDB
+    if quotes:
+        try:
+            res = StorageOrchestrator.persist_quotes(quotes)
+            return len(quotes)
+        except Exception as e:
+            print(f"[ERROR] Failed persisting {src}-{dest} for {lead_tag}: {e}")
+            return 0
+    return 0
 
 def dispatch_scrape_jobs():
-    """
-    Generates and dispatches distributed scrape tasks to the Celery/Redis queue.
-    """
-    print("[*] Starting vayuIndex Distributed Scraper Producer...")
+    print("[*] Starting vayuIndex Aggregator Producer...")
     today = datetime.now(timezone.utc)
     
-    total_tasks = 0
-    for provider in PROVIDERS:
+    total_quotes_inserted = 0
+    
+    # Use ThreadPoolExecutor for concurrent aggregator fetches and DB inserts
+    tasks = []
+    # Using thread pool context manager ensures graceful teardown and avoids leaks
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         for route in ROUTES:
             for lead_tag, days_out in ADVANCE_DAYS.items():
-                target_date = (today + timedelta(days=days_out)).strftime("%Y-%m-%d")
-                
-                # Push task to Redis queue via Celery
-                scrape_flight_corridor.delay(
-                    provider=provider,
-                    src=route["src"],
-                    dest=route["dest"],
-                    depart_date=target_date,
-                    lead_tag=lead_tag
+                tasks.append(
+                    executor.submit(process_route_window, route, lead_tag, days_out, today)
                 )
-                total_tasks += 1
                 
-    print(f"[+] Dispatched {total_tasks} tasks to Celery queue.")
+        for future in concurrent.futures.as_completed(tasks):
+            total_quotes_inserted += future.result()
+            
+    print(f"[+] Successfully extracted and persisted {total_quotes_inserted} flight quotes across {len(ROUTES)} corridors.")
 
 if __name__ == "__main__":
     dispatch_scrape_jobs()

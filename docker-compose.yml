@@ -1,3 +1,4 @@
+# written by sounic behera
 services:
   # 1. TimescaleDB (Time-Series PostgreSQL)
   timescaledb:
@@ -30,8 +31,8 @@ services:
     image: minio/minio:latest
     container_name: vayu_minio
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadminpassword
+      MINIO_ROOT_USER: vayu_admin_key
+      MINIO_ROOT_PASSWORD: vayu_secret_pass
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -46,11 +47,17 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: vayu_celery
-    command: celery -A scraper.worker worker --loglevel=info
+    command: celery -A scraper.worker worker --concurrency=4 --loglevel=info
     environment:
       - REDIS_URL=redis://vayu_redis:6379/0
       - DB_URL=postgresql://vayu_admin:vayu_secure_password@vayu_timescale:5432/vayu_cpi
-      - MINIO_ENDPOINT=vayu_minio:9000
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=vayu_admin_key
+      - MINIO_SECRET_KEY=vayu_secret_pass
+      - AWS_ACCESS_KEY_ID=vayu_admin_key
+      - AWS_SECRET_ACCESS_KEY=vayu_secret_pass
+      - AWS_ENDPOINT_URL_S3=http://minio:9000
+      - PYTHONPATH=/app
     depends_on:
       - redis
       - timescaledb
@@ -67,7 +74,10 @@ services:
       - "8000:8000"
     environment:
       - DB_URL=postgresql://vayu_admin:vayu_secure_password@vayu_timescale:5432/vayu_cpi
-      - MINIO_ENDPOINT=vayu_minio:9000
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=vayu_admin_key
+      - MINIO_SECRET_KEY=vayu_secret_pass
+      - PYTHONPATH=/app
     depends_on:
       - timescaledb
       - minio
@@ -87,5 +97,6 @@ services:
 
 volumes:
   timescaledb_data:
+  
   redis_data:
   minio_data:

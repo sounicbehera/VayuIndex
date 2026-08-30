@@ -14,6 +14,7 @@ class IndiGoScraper(BaseScraper):
         
         async with async_playwright() as p:
             browser = await p.chromium.launch(
+                executable_path="/usr/bin/chromium",
                 headless=True,
                 args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
             )
