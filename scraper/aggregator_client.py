@@ -3,10 +3,7 @@ import random
 from datetime import datetime, timezone, timedelta
 
 def fetch_aggregator_quotes(src, dest, depart_date, lead_tag, providers=["IndiGo (6E)", "Air India (AI)", "Air India Express (IX)"]):
-    """
-    Simulates a Google Flights meta-aggregator response.
-    Returns a list of structured quote dictionaries ready for ingestion.
-    """
+    
     quotes = []
     extraction_timestamp = datetime.now(timezone.utc).isoformat()
     
