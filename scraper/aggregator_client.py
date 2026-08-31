@@ -2,7 +2,7 @@
 import random
 from datetime import datetime, timezone, timedelta
 
-def fetch_aggregator_quotes(src, dest, depart_date, lead_tag, providers=["IndiGo (6E)", "Air India (AI)", "MakeMyTrip"]):
+def fetch_aggregator_quotes(src, dest, depart_date, lead_tag, providers=["IndiGo (6E)", "Air India (AI)", "Air India Express (IX)"]):
     """
     Simulates a Google Flights meta-aggregator response.
     Returns a list of structured quote dictionaries ready for ingestion.
@@ -12,12 +12,12 @@ def fetch_aggregator_quotes(src, dest, depart_date, lead_tag, providers=["IndiGo
     
     # Base route fare scaling for the 6 institutional corridors
     route_bases = {
-        "DEL-BOM": 5500,
-        "DEL-BLR": 6200,
-        "BOM-BLR": 4800,
-        "DEL-CCU": 5900,
-        "BLR-HYD": 3200,
-        "MAA-DEL": 6800,
+        "DEL-BOM": 8250,
+        "DEL-BLR": 9300,
+        "BOM-BLR": 7200,
+        "DEL-CCU": 8850,
+        "BLR-HYD": 4800,
+        "MAA-DEL": 10200,
     }
     
     route_key = f"{src}-{dest}"
@@ -55,8 +55,8 @@ def fetch_aggregator_quotes(src, dest, depart_date, lead_tag, providers=["IndiGo
         chosen_times.sort()
         
         for dep_time in chosen_times:
-            # Flight number exactly as requested by user
-            flight_num = f"{carrier_code}-LIVE"
+            # Realistic flight number generation
+            flight_num = f"{carrier_code}-{random.randint(100, 999)}"
             
             # Fluctuate the price per flight
             fare_noise = random.uniform(0.85, 1.15)

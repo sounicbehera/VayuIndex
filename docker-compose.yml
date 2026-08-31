@@ -4,16 +4,15 @@ services:
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: vayu_timescale
-    environment:
-      POSTGRES_USER: vayu_admin
-      POSTGRES_PASSWORD: vayu_secure_password
-      POSTGRES_DB: vayu_cpi
+    env_file: .env
     ports:
       - "5433:5432"
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
       - ./sql/01_init_timescale.sql:/docker-entrypoint-initdb.d/01_init.sql
     restart: unless-stopped
+    networks:
+      - vayu_net
 
   # 2. Redis (Streaming Buffer)
   redis:
@@ -25,14 +24,14 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     restart: unless-stopped
+    networks:
+      - vayu_net
 
   # 3. MinIO (S3-Compatible Object Store)
   minio:
     image: minio/minio:latest
     container_name: vayu_minio
-    environment:
-      MINIO_ROOT_USER: vayu_admin_key
-      MINIO_ROOT_PASSWORD: vayu_secret_pass
+    env_file: .env
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -40,6 +39,8 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
     restart: unless-stopped
+    networks:
+      - vayu_net
 
   # 4. Celery Worker (Distributed Scraper)
   celery_worker:
@@ -48,20 +49,15 @@ services:
       dockerfile: Dockerfile
     container_name: vayu_celery
     command: celery -A scraper.worker worker --concurrency=4 --loglevel=info
+    env_file: .env
     environment:
-      - REDIS_URL=redis://vayu_redis:6379/0
-      - DB_URL=postgresql://vayu_admin:vayu_secure_password@vayu_timescale:5432/vayu_cpi
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=vayu_admin_key
-      - MINIO_SECRET_KEY=vayu_secret_pass
-      - AWS_ACCESS_KEY_ID=vayu_admin_key
-      - AWS_SECRET_ACCESS_KEY=vayu_secret_pass
-      - AWS_ENDPOINT_URL_S3=http://minio:9000
       - PYTHONPATH=/app
     depends_on:
       - redis
       - timescaledb
       - minio
+    networks:
+      - vayu_net
 
   # 5. FastAPI Backend
   api:
@@ -72,15 +68,14 @@ services:
     command: uvicorn api.app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
+    env_file: .env
     environment:
-      - DB_URL=postgresql://vayu_admin:vayu_secure_password@vayu_timescale:5432/vayu_cpi
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=vayu_admin_key
-      - MINIO_SECRET_KEY=vayu_secret_pass
       - PYTHONPATH=/app
     depends_on:
       - timescaledb
       - minio
+    networks:
+      - vayu_net
 
   # 6. Next.js Dashboard
   frontend:
@@ -90,13 +85,17 @@ services:
     container_name: vayu_frontend
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    env_file: .env
     depends_on:
       - api
+    networks:
+      - vayu_net
+
+networks:
+  vayu_net:
+    driver: bridge
 
 volumes:
   timescaledb_data:
-  
   redis_data:
   minio_data:

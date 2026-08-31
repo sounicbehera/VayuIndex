@@ -137,7 +137,7 @@ export default function Dashboard() {
           <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block"></div>
           
           <a
-            href="http://127.0.0.1:8000/api/v1/export/mospi-report.csv"
+            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/export/mospi-report.csv`}
             download="vayuIndex_MoSPI_CPI_SubClass58_Report.csv"
             className="flex items-center gap-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white font-medium px-3 py-2 rounded-md transition border border-sky-400/30"
           >

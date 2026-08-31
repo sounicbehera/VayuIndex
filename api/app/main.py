@@ -9,9 +9,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import ThreadedConnectionPool
 from storage.audit_vault import get_minio_client, MINIO_BUCKET
 import csv
 import io
+import redis
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone
 from analytics.backtesting import run_dgca_backtest
@@ -27,31 +29,72 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# TimescaleDB connection targeting Docker port 5433
+# TimescaleDB connection targeting Docker port 5432 internally
 DB_URL = os.getenv("DB_URL", "postgresql://vayu_admin:vayu_secure_password@127.0.0.1:5433/vayu_cpi")
 
+# Initialize robust Threaded Connection Pool (Phase 3 Requirement)
+db_pool = ThreadedConnectionPool(1, 20, DB_URL, cursor_factory=RealDictCursor)
+
 def get_db():
-    return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+    if not db_pool:
+        raise Exception("Database pool is not initialized")
+    return db_pool.getconn()
+
+def release_db(conn):
+    if db_pool and conn:
+        db_pool.putconn(conn)
 
 
-@app.get("/health", tags=["Monitoring"])
+@app.get("/api/v1/health", tags=["Monitoring"])
 def health_check():
-    """Health check endpoint to verify API and database connectivity."""
+    """Comprehensive health check for DB, Redis, and MinIO boundaries."""
+    status = {
+        "service": "vayuIndex-serving-engine",
+        "timescaledb": "disconnected",
+        "redis": "disconnected",
+        "minio": "disconnected",
+        "overall": "unhealthy"
+    }
+    
+    # 1. TimescaleDB Check
     conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute("SELECT 1;")
-        return {"status": "healthy", "service": "vayuIndex-serving-engine", "database": "connected"}
+        status["timescaledb"] = "connected"
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database connection error: {str(e)}")
+        status["timescaledb_error"] = str(e)
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
+            
+    # 2. Redis Check
+    try:
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        r = redis.Redis.from_url(redis_url, socket_connect_timeout=2)
+        if r.ping():
+            status["redis"] = "connected"
+    except Exception as e:
+        status["redis_error"] = str(e)
+        
+    # 3. MinIO Check
+    try:
+        s3 = get_minio_client()
+        if s3.bucket_exists(MINIO_BUCKET):
+            status["minio"] = "connected"
+    except Exception as e:
+        status["minio_error"] = str(e)
+        
+    if all(status[k] == "connected" for k in ["timescaledb", "redis", "minio"]):
+        status["overall"] = "healthy"
+        return status
+        
+    raise HTTPException(status_code=500, detail=status)
 
 
 @app.get("/api/v1/index/latest", tags=["Econometric Index"])
@@ -65,7 +108,7 @@ def get_latest_index():
         result = cursor.fetchone()
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
     
     if not result:
         raise HTTPException(status_code=404, detail="No calculated index found in the database.")
@@ -84,7 +127,7 @@ def get_index_history(limit: int = Query(30, ge=1, le=365)):
         return results
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
 
 
 @app.get("/api/v1/analytics/elasticity", tags=["Analytics"])
@@ -114,7 +157,7 @@ def get_lead_time_elasticity():
         return results
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
 
 
 @app.get("/api/v1/analytics/routes", tags=["Analytics"])
@@ -149,7 +192,7 @@ def get_route_breakdown():
         return results
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
 
 
 @app.get("/api/v1/analytics/benchmark", tags=["Analytics"])
@@ -164,14 +207,16 @@ def get_benchmark_comparison():
                 ROUND(index_value::numeric, 2)::float AS apix_value,
                 ROUND((103.0 + (ROW_NUMBER() OVER (ORDER BY index_date ASC) * 0.25))::numeric, 2)::float AS mospi_proxy_value
             FROM apix_daily_indices 
-            ORDER BY index_date ASC 
+            ORDER BY index_date DESC 
             LIMIT 30;
         """)
         results = cursor.fetchall()
+        # Reverse to ensure chronological order for the frontend X-axis
+        results.reverse()
         return results
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
 
 
 @app.get("/api/v1/audit/verify/{crawl_id}", tags=["Audit & Governance"])
@@ -195,7 +240,7 @@ def verify_audit_snapshot(crawl_id: str):
         record = cursor.fetchone()
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
 
     if not record or not record.get("proof_object_key"):
         raise HTTPException(
@@ -261,7 +306,7 @@ def export_mospi_cpi_report():
         rows = cursor.fetchall()
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -332,7 +377,7 @@ def get_latest_quotes(limit: int = 100):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
 
 @app.get("/api/v1/index/daily", tags=["Econometric Index"])
 def get_daily_indices():
@@ -353,7 +398,128 @@ def get_daily_indices():
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if conn:
-            conn.close()
+            release_db(conn)
+import xml.etree.ElementTree as ET
+from fastapi import Request, Response
+import random
+
+ROUTE_FLIGHT_MAP = {
+    "DEL-BOM": "5271",
+    "DEL-BLR": "2131",
+    "BOM-BLR": "5262",
+    "DEL-CCU": "2022",
+    "DEL-MAA": "2568"
+}
+
+@app.post("/mock/ndc/v21.3/AirShopping", tags=["Mock NDC API"])
+async def mock_ndc_air_shopping(request: Request):
+    """
+    Simulates the real IndiGo NDC API for the hackathon by parsing the request
+    and returning the exact realistic IATA_AirShoppingRS schema provided.
+    """
+    body = await request.body()
+    try:
+        root = ET.fromstring(body)
+        ns = {'cmn': 'http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersCommonTypes'}
+        origin = root.find('.//cmn:OriginDepCriteria/cmn:IATA_LocationCode', ns).text
+        dest = root.find('.//cmn:DestArrivalCriteria/cmn:IATA_LocationCode', ns).text
+        date_str = root.find('.//cmn:OriginDepCriteria/cmn:Date', ns).text
+    except Exception:
+        origin, dest, date_str = "AGX", "COK", "2025-10-19"
+        
+    flight_num = ROUTE_FLIGHT_MAP.get(f"{origin}-{dest}", str(random.randint(100, 999)))
+    
+    base_fare = 4500.0 if origin == "DEL" else 5500.0
+    tax = base_fare * 0.18
+    total = base_fare + tax
+    
+    fake_hour = random.randint(5, 22)
+    fake_min = random.choice(["00", "15", "30", "45"])
+    
+    xml_response = f"""<IATA_AirShoppingRS xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersMessage">
+    <Response>
+        <DataLists xmlns="http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersCommonTypes">
+            <DatedMarketingSegmentList>
+                <DatedMarketingSegment>
+                    <Arrival>
+                        <AircraftScheduledDateTime>{date_str}T23:30:00</AircraftScheduledDateTime>
+                        <IATA_LocationCode>{dest}</IATA_LocationCode>
+                    </Arrival>
+                    <CarrierDesigCode>6E</CarrierDesigCode>
+                    <DatedMarketingSegmentId>Mkt-seg0349235905</DatedMarketingSegmentId>
+                    <DatedOperatingSegmentRefId>Opr-seg0349235905</DatedOperatingSegmentRefId>
+                    <Dep>
+                        <AircraftScheduledDateTime>{date_str}T{fake_hour:02d}:{fake_min}:00</AircraftScheduledDateTime>
+                        <IATA_LocationCode>{origin}</IATA_LocationCode>
+                    </Dep>
+                    <MarketingCarrierFlightNumberText>{flight_num}</MarketingCarrierFlightNumberText>
+                </DatedMarketingSegment>
+            </DatedMarketingSegmentList>
+            <PaxList>
+                <Pax>
+                    <PaxID>ADT0</PaxID>
+                    <PTC>ADT</PTC>
+                </Pax>
+            </PaxList>
+            <PaxSegmentList>
+                <PaxSegment>
+                    <CabinTypeAssociationChoice>
+                        <SegmentCabinType>
+                            <CabinTypeCode>5</CabinTypeCode>
+                            <CabinTypeName>Economy</CabinTypeName>
+                        </SegmentCabinType>
+                    </CabinTypeAssociationChoice>
+                    <DatedMarketingSegmentRefId>Mkt-seg0349235905</DatedMarketingSegmentRefId>
+                    <PaxSegmentID>seg0349235905</PaxSegmentID>
+                </PaxSegment>
+            </PaxSegmentList>
+        </DataLists>
+        <OffersGroup xmlns="http://www.iata.org/IATA/2015/EASD/00/IATA_OffersAndOrdersCommonTypes">
+            <CarrierOffers>
+                <Offer>
+                    <OfferID>654432311_id-542b4719-dc51-4b40-a92a-8b213ae785b9-o-1</OfferID>
+                    <OfferItem>
+                        <FareDetail>
+                            <FareComponent>
+                                <CabinType>
+                                    <CabinTypeCode>5</CabinTypeCode>
+                                    <CabinTypeName>Economy</CabinTypeName>
+                                </CabinType>
+                                <FareBasisCode>C0IP</FareBasisCode>
+                                <PaxSegmentRefID>seg0349235905</PaxSegmentRefID>
+                            </FareComponent>
+                            <PaxRefID>ADT0</PaxRefID>
+                            <Price>
+                                <BaseAmount CurCode="INR">{base_fare:.2f}</BaseAmount>
+                                <TaxSummary>
+                                    <Tax>
+                                        <Amount CurCode="INR">{tax:.2f}</Amount>
+                                    </Tax>
+                                    <TotalTaxAmount CurCode="INR">{tax:.2f}</TotalTaxAmount>
+                                </TaxSummary>
+                                <TotalAmount CurCode="INR">{total:.2f}</TotalAmount>
+                            </Price>
+                        </FareDetail>
+                        <MandatoryInd>true</MandatoryInd>
+                        <OfferItemID>654432311_id-542b4719-dc51-4b40-a92a-8b213ae785b9-o-1-1</OfferItemID>
+                        <Price>
+                            <BaseAmount CurCode="INR">{base_fare:.2f}</BaseAmount>
+                            <TaxSummary>
+                                <Tax>
+                                    <Amount CurCode="INR">{tax:.2f}</Amount>
+                                </Tax>
+                                <TotalTaxAmount CurCode="INR">{tax:.2f}</TotalTaxAmount>
+                            </TaxSummary>
+                            <TotalAmount CurCode="INR">{total:.2f}</TotalAmount>
+                        </Price>
+                    </OfferItem>
+                </Offer>
+            </CarrierOffers>
+        </OffersGroup>
+    </Response>
+</IATA_AirShoppingRS>"""
+    return Response(content=xml_response, media_type="application/xml")
+
 import xml.etree.ElementTree as ET
 from fastapi import Request, Response
 import random

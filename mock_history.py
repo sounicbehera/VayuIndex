@@ -2,7 +2,7 @@ import datetime
 import random
 import psycopg2
 
-DB_URL = "postgresql://vayu_admin:vayu_secure_password@vayu_timescale:5432/vayu_cpi"
+DB_URL = "postgresql://vayu_admin:vayu_secure_password@localhost:5433/vayu_cpi"
 
 def seed_history():
     conn = psycopg2.connect(DB_URL)
@@ -15,7 +15,7 @@ def seed_history():
     cur.execute("SELECT COUNT(*) FROM apix_daily_indices;")
     count = cur.fetchone()[0]
     
-    start_offset = 1 if count > 0 else 0
+    start_offset = 0
     current_val = 109.88 # Start near today's actual value
     
     for i in range(start_offset, 31):

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -40,18 +40,18 @@ export interface RouteBreakdown {
 }
 
 export const fetchLatestIndex = async (): Promise<IndexRecord> => {
-  const { data } = await apiClient.get('/index/latest');
-  return data;
+  const res = await fetch(`${API_BASE_URL}/index/latest?t=${Date.now()}`, { cache: 'no-store' });
+  return res.json();
 };
 
 export const fetchElasticity = async (): Promise<ElasticityMetric[]> => {
-  const { data } = await apiClient.get('/analytics/elasticity');
-  return data;
+  const res = await fetch(`${API_BASE_URL}/analytics/elasticity?t=${Date.now()}`, { cache: 'no-store' });
+  return res.json();
 };
 
 export const fetchRoutes = async (): Promise<RouteBreakdown[]> => {
-  const { data } = await apiClient.get('/analytics/routes');
-  return data;
+  const res = await fetch(`${API_BASE_URL}/analytics/routes?t=${Date.now()}`, { cache: 'no-store' });
+  return res.json();
 };
 
 export interface BenchmarkPoint {
@@ -61,6 +61,6 @@ export interface BenchmarkPoint {
 }
 
 export const fetchBenchmark = async (): Promise<BenchmarkPoint[]> => {
-  const { data } = await apiClient.get('/analytics/benchmark');
-  return data;
+  const res = await fetch(`${API_BASE_URL}/analytics/benchmark?t=${Date.now()}`, { cache: 'no-store' });
+  return res.json();
 };

@@ -1,4 +1,4 @@
-# written by sounic behera
+# // written by smruti sourav sahoo
 import numpy as np
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -86,12 +86,26 @@ def calculate_and_store_index(target_date: str = None):
             print(f"Route: {rid:<8} | Quotes: {len(fares):<3} | Geom Mean: Rs. {geom_mean:8.2f} | DGCA Weight: {(w or 0.0):.4f}")
         print("------------------------------------------------------------")
 
+        # Baseline period prices per route (P_0)
+        BASE_PRICES = {
+            "DEL-BOM": 8000.0,
+            "DEL-BLR": 9000.0,
+            "BOM-BLR": 7000.0,
+            "DEL-CCU": 8200.0,
+            "BLR-HYD": 4600.0,
+            "MAA-DEL": 9800.0
+        }
+        
+        base_basket_price = 0.0
+        for rid, w in route_weights.items():
+            base_basket_price += BASE_PRICES.get(rid, 5000.0) * w
+            
+        base_basket_price = base_basket_price / total_weight if total_weight > 0 else base_basket_price
+
         # Normalized Laspeyres Basket Aggregate
         current_basket_price = weighted_fare_sum / total_weight if total_weight > 0 else weighted_fare_sum
         
-        # Baseline period constant (Base price = ₹5,000 => Index = 100.0)
-        BASE_BASKET_PRICE = 5000.0
-        apix_value = round((current_basket_price / BASE_BASKET_PRICE) * 100.0, 4)
+        apix_value = round((current_basket_price / base_basket_price) * 100.0, 4)
 
         # Persist daily index into apix_daily_indices
         upsert_sql = """

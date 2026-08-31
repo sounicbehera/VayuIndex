@@ -31,7 +31,8 @@ export default function ProofOfDocumentModal({ isOpen, onClose }: ProofModalProp
   useEffect(() => {
     if (isOpen) {
       setLoading(true);
-      fetch("http://127.0.0.1:8000/api/v1/quotes/latest?limit=50")
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      fetch(`${baseUrl}/api/v1/quotes/latest?limit=50&t=${Date.now()}`, { cache: 'no-store' })
         .then((res) => res.json())
         .then((res) => {
           if (res.status === "success") {
@@ -114,7 +115,7 @@ export default function ProofOfDocumentModal({ isOpen, onClose }: ProofModalProp
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-zinc-100">
-                      {q.flight_number} • {q.corridor_code}
+                      {q.corridor_code}
                     </div>
                     <div className="text-xs text-zinc-500">
                       Dep: {q.departure_date} at {q.departure_time} | Window: {q.advance_window}

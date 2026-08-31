@@ -77,7 +77,9 @@ def fetch_indigo_ndc(origin, destination, travel_date):
         print(f"[ERROR] API Request failed for {origin}-{destination}: {e}")
         return None
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-app = Celery('vayu_scraper', broker=REDIS_URL)
+app = Celery('vayu_scraper', broker=REDIS_URL, backend=REDIS_URL)
+app.conf.broker_pool_limit = 10
+app.conf.redis_max_connections = 20
 
 @app.task(bind=True, name='scraper.worker.scrape_flight_corridor', max_retries=3, default_retry_delay=60)
 def scrape_flight_corridor(self, provider: str, src: str, dest: str, depart_date: str, lead_tag: str):
